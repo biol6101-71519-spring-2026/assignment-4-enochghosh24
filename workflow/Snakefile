@@ -12,6 +12,136 @@ Build your workflow here by adding rules for:
 Refer to the README.md for detailed instructions and examples.
 """
 
-# ============================================================================
-# Your rules go here
-# ============================================================================
+configfile: "/lustre/scratch/eghosh/bioinfo_workflows/assignment-4-enochghosh24/config/config.yaml"
+
+SAMPLE = config["sample_name"]
+THREADS = config["assembly"]["threads"]
+
+QC_DIR = "results/qc"
+PROC_DIR = "results/processed_reads"
+ASM_DIR = "results/assembly"
+LOG_DIR = "logs"
+
+
+# --------------------
+# FINAL TARGETS
+# --------------------
+rule all:
+    input:
+        f"{ASM_DIR}/contigs.fasta",
+        f"{QC_DIR}/assembly/quast/report.html",
+        f"{QC_DIR}/assembly/busco"
+
+
+# --------------------
+# RAW QC (FastQC)
+# --------------------
+rule raw_qc:
+    input:
+        r1=config["reads_r1"],
+        r2=config["reads_r2"]
+    output:
+        directory(f"{QC_DIR}/raw")
+    threads: THREADS
+    log:
+        f"{LOG_DIR}/fastqc_{SAMPLE}.log"
+    conda:
+        "envs/fastqc.yaml"
+    shell:
+        """
+        mkdir -p {QC_DIR}/raw
+        fastqc {input.r1} {input.r2} -o {QC_DIR}/raw -t {threads} &> {log}
+        """
+
+
+# --------------------
+# READ TRIMMING (fastp)
+# --------------------
+rule trim:
+    input:
+        r1=config["reads_r1"],
+        r2=config["reads_r2"]
+    output:
+        r1=f"{PROC_DIR}/R1_trimmed.fastq.gz",
+        r2=f"{PROC_DIR}/R2_trimmed.fastq.gz"
+    threads: THREADS
+    log:
+        f"{LOG_DIR}/fastp_{SAMPLE}.log"
+    conda:
+        "envs/fastp.yaml"
+    shell:
+        """
+        mkdir -p {PROC_DIR}
+        fastp -i {input.r1} -I {input.r2} \
+              -o {output.r1} -O {output.r2} \
+              &> {log}
+        """
+
+
+# --------------------
+# GENOME ASSEMBLY (SPAdes)
+# --------------------
+rule assemble:
+    input:
+        r1=f"{PROC_DIR}/R1_trimmed.fastq.gz",
+        r2=f"{PROC_DIR}/R2_trimmed.fastq.gz"
+    output:
+        f"{ASM_DIR}/contigs.fasta"
+    threads: THREADS
+    log:
+        f"{LOG_DIR}/spades_{SAMPLE}.log"
+    conda:
+        "envs/spades.yaml"
+    shell:
+        """
+        mkdir -p {ASM_DIR}
+        spades.py -1 {input.r1} -2 {input.r2} \
+                  -o {ASM_DIR} -t {threads} \
+                  &> {log}
+        """
+
+
+# --------------------
+# QUAST (assembly stats)
+# --------------------
+rule quast:
+    input:
+        f"{ASM_DIR}/contigs.fasta"
+    output:
+        f"{QC_DIR}/assembly/quast/report.html"
+    threads: THREADS
+    log:
+        f"{LOG_DIR}/quast_{SAMPLE}.log"
+    conda:
+        "envs/quast.yaml"
+    shell:
+        """
+        mkdir -p {QC_DIR}/assembly/quast
+        quast {input} -o {QC_DIR}/assembly/quast &> {log}
+        """
+
+
+# --------------------
+# BUSCO (completeness)
+# --------------------
+rule busco:
+    input:
+        f"{ASM_DIR}/contigs.fasta"
+    output:
+        directory(f"{QC_DIR}/assembly/busco")
+    threads: THREADS
+    log:
+        f"{LOG_DIR}/busco_{SAMPLE}.log"
+    conda:
+        "envs/busco.yaml"
+    shell:
+        """
+        mkdir -p {QC_DIR}/assembly/busco
+        busco -i {input} \
+              -l {config[busco_lineage]} \
+              -o busco \
+              -m genome \
+              --out_path {QC_DIR}/assembly/busco \
+              -c {threads} \
+              &> {log}
+        """

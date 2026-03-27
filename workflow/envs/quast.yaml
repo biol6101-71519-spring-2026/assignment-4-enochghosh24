@@ -1,0 +1,8 @@
+name: test_quast
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - quast
+prefix: /home/eghosh/mambaforge/envs/test_quast

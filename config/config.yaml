@@ -1,0 +1,13 @@
+sample_name: "ecoli"
+
+reads_r1: "data/raw_reads/SRR2584863_1.fastq.gz"
+reads_r2: "data/raw_reads/SRR2584863_2.fastq.gz"
+
+organism: "Escherichia coli B str. REL606"
+expected_genome_size: "4.6m"
+
+busco_lineage: "bacteria_odb10"
+
+assembly:
+  threads: 4  
+  memory_gb: 16

@@ -1,0 +1,14 @@
+Organism: Escherichia coli B str. REL606
+
+Data source: NCBI SRA (SRR2584863)
+Study: E. coli genome evolution over 50,000 generations
+
+Sequencing platform: Illumina (paired-end)
+Library strategy: WGS (whole genome sequencing)
+
+Total reads: ~1.6 million paired reads
+Total bases: ~466 Mb
+GC content: 50.8%
+
+Expected genome size: ~4.6 Mb
+Estimated coverage: ~100x
